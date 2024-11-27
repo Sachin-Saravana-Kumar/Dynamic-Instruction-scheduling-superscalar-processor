@@ -18,7 +18,27 @@ FILE* FP= nullptr;
     argv[2] = "32"
     ... and so on
 */
-
+    struct cycle_counter{
+        int FE_AC;
+        int FE_NC;
+        int DE_AC;
+        int DE_NC;
+        int RN_AC;
+        int RN_NC;
+        int RR_AC;
+        int RR_NC;
+        int DI_AC;
+        int DI_NC;
+        int IS_AC;
+        int IS_NC;
+        int EX_AC;
+        int EX_NC;
+        int WB_AC;
+        int WB_NC;
+        int RT_AC;
+        int RT_NC;
+        
+    };
     struct pipelining{
         int op_type;
         int dst;
@@ -28,6 +48,7 @@ FILE* FP= nullptr;
         bool rob_src2;
         bool empty;
         int sl_no;
+        cycle_counter values;
     };
 
     struct function_unit{
@@ -40,6 +61,7 @@ FILE* FP= nullptr;
         bool valid;
         int no_of_cycles;
         int sl_no;
+        cycle_counter values;
     }; 
 
     struct RMT{
@@ -49,30 +71,14 @@ FILE* FP= nullptr;
 
     struct ROB{
         int dst;
-        bool rdy;
-        int pc;
-    };
-
-    struct cycle_counter{
-        int nth_cycle;
-        int no_of_cyc_need;
-    };
-    struct print_st{
-        int sl_no;
-        int op_type;
-        int dst;
         int rs1;
         int rs2;
-        cycle_counter FE;
-        cycle_counter DE;
-        cycle_counter RN;
-        cycle_counter RR;
-        cycle_counter DI;
-        cycle_counter IS;
-        cycle_counter EX;
-        cycle_counter WB;
-        cycle_counter RT;
+        bool rdy;
+        int pc;
+        pipelining values;
+
     };
+
 
     struct ISSUE_Q{
         bool valid;
@@ -86,6 +92,7 @@ FILE* FP= nullptr;
         bool rob_src1;
         bool rob_src2;
         int sl_no;
+        cycle_counter values;
     };
 
 
@@ -106,7 +113,6 @@ class out_of_order{
     pipelining* WB;
     RMT* RMT_TABLE;
     ROB* ROB_TABLE;
-    print_st* print_state;
     ISSUE_Q* IQ;
     int PC;
     int IQ_entries;
@@ -114,8 +120,8 @@ class out_of_order{
     bool iq_full;
     int fu_seq;
     int advance_cycle;
-    int p_no;
-    int end;
+    int end_of_file;
+    int end_of_stage;
 
 
     out_of_order(int w,int r,int q) : width(w), rob_size(r), iq_size(q){
@@ -128,21 +134,17 @@ class out_of_order{
         FU_COUNT = 0;
         fu_seq = 0;
         advance_cycle = 0;
-        p_no = 0;
         sl_no = 0;
-        end = 0;
+        end_of_file = 0;
+        end_of_stage = 0;
         for(int i = 0; i < width*5 ;i++){
-                FU[i] = {-1, -1,-1,-1,0,0,0,-1,-1};
-                WB[i] = {-1, -1,-1,-1,0,0,0,-1};
+                FU[i] = {-1,-1,-1,-1,0,0,0,-1,-1,{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}};
+                WB[i] = {-1, -1,-1,-1,0,0,0,-1,{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}};
 
         }        
-        for(int i = 0; i < width*5*5 ;i++){
-               //print_state[i] = {-1,-1,-1,-1,-1,{-1,-1},{-1,-1},{-1,-1},{-1,-1},{-1,-1},{-1,-1},{-1,-1},{-1,-1},{-1,-1}};
 
-        }
         RMT_TABLE = new RMT[67];
         ROB_TABLE = new ROB[rob_size];
-        print_state =  new print_st[rob_size];
         IQ        = new ISSUE_Q[iq_size];
         head = 0;
         tail = 0;
@@ -152,10 +154,10 @@ class out_of_order{
         IQ_entries = 0;
         for(int i =0; i < width; i++)
         {
-            DE[i] ={-1, -1,-1,-1,0,0,0,-1};
-            RN[i] = {-1, -1,-1,-1,0,0,0,-1};
-            RR[i] = {-1, -1,-1,-1,0,0,0,-1};
-            DI[i] = {-1, -1,-1,-1,0,0,0,-1};
+            DE[i] ={-1, -1,-1,-1,0,0,0,-1,{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}};
+            RN[i] = {-1, -1,-1,-1,0,0,0,-1,{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}};
+            RR[i] = {-1, -1,-1,-1,0,0,0,-1,{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}};
+            DI[i] = {-1, -1,-1,-1,0,0,0,-1,{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}};
 
         }
         for(int i =0; i < 67; i++)
@@ -164,17 +166,12 @@ class out_of_order{
         }
         for(int i =0; i < rob_size; i++)
         {
-            ROB_TABLE[i] = {-1,0,-1};
+            ROB_TABLE[i] = {-1,-1,-1,0,-1,{-1, -1,-1,-1,0,0,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}};
 
         }
         for(int i =0; i < iq_size; i++)
         {
-            IQ[i] ={ 0,-1, -1,0,-1,0,-1,0,0,0,-1};
-            // if (i == 3 || i == 6)
-            // {
-            //        IQ[i] ={0, -1,0,-1,0,-1}; 
-            // }
-
+            IQ[i] ={ 0,-1, -1,0,-1,0,-1,0,0,0,-1,{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}};
         }
         
     }
@@ -186,8 +183,7 @@ class out_of_order{
         delete[] RR;
         delete[] DI;
         delete[] IQ;
-        delete[] RMT_TABLE;
-        delete[] ROB_TABLE;
+        //delete[] ROB_TABLE;
         delete[] FU;
         delete[] WB;
     }
@@ -197,48 +193,78 @@ class out_of_order{
     int op_type, dest, src1, src2;
     if(DE[0].empty == 0){
     for (int i=0; i < width;i++){
+        fetch_count(DE[i].values);
         if(fscanf(FP, "%llx %d %d %d %d", &pc, &op_type, &dest, &src1, &src2) != EOF){
-            //printf("hiii\n");
-            DE[i] = {op_type, dest,src1,src2,false, false, true,sl_no};
-            //print_state[p_no] = {sl_no,op_type,dest,src1,src2,{advance_cycle,1},{-1,-1},{-1,-1},{-1,-1},{-1,-1},{-1,-1},{-1,-1},{-1,-1},{-1,-1}} ;
+            DE[i] = {op_type, dest,src1,src2,false, false, true,sl_no,advance_cycle,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0};
+            decode_count(DE[i].values);
             sl_no++;
-            p_no++;
-            if(p_no == width*5*5){
-                p_no = 0;
-            }
+            decode_count(DE[i].values);
         }
         else{
-            for(int j = 0;j < 4;j++)
-            DE[i] = {-1, -1,-1,-1,false, false, false,-1};
-            end = 1;
-
+            DE[i] = {-1, -1,-1,-1,false, false, false,-1,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0,-1,0};
+            if(i == 0)
+            end_of_file = 1;
         }
     }
     }
     }
+    void fetch_count(cycle_counter &fe){
+        fe.FE_AC = advance_cycle;
+        // if (fe.FE_AC == -1)
+        // {
+        //     fe.FE_AC = advance_cycle;
+        //     fe.FE_AC = 1;
+        // }
+        // fe.FE_AC++;
+    }
+    void decode_count(cycle_counter &de){
+
+        de.DE_AC = advance_cycle + 1;
+        // if(de.DE_AC == -1){
+        //     de.DE_AC = advance_cycle;
+        //     de.DE_NC = 0;
+        // }
+        // de.DE_NC++;
+        
+    }
+
 
     void decode(){
         if(RN[0].empty == 0 && DE[0].empty == 1){
             //update_print(DE);
             switch_array(DE,RN);
+            for (int i = 0; i < width; ++i) {
+                RN[i].values.RN_AC = advance_cycle + 1;
+            }
             RN[0].empty =1;
             DE[0].empty =0;
         }
     }
 
+
     void rename(){
                 if(RR[0].empty == 0 && RN[0].empty == 1 && check_rob()){
                     rename_change(RN);
                     switch_array(RN,RR);
+                    for (int i = 0; i < width; ++i) {
+                        RR[i].values.RR_AC = advance_cycle + 1;
+                    }
                     RR[0].empty = 1;
                     RN[0].empty = 0;
                 }
+                else if(RR[0].empty == 1  && RN[0].empty ==1){
+                    // for (int i = 0; i < width; ++i) {
+                    //     rename_counter(RN[i].values);
+                    // }
+                }
             }
-
     void rename_change(pipelining* RN){
         for(int i = 0; i < width; i++)
         {
+            
             PC++;
+            ROB_TABLE[tail].rs1 = RN[i].rs1;
+            ROB_TABLE[tail].rs2 = RN[i].rs2;
             RN[i].rob_src1 = source_change(i,RN[i].rs1,1);
             RN[i].rob_src2 = source_change(i,RN[i].rs2,2);
                 ROB_TABLE[tail].dst = RN[i].dst; // in rob table entering the dst in the tail 
@@ -252,12 +278,14 @@ class out_of_order{
     bool source_change(int i , int value_rs, int k){
         if(value_rs != -1 &&  RMT_TABLE[value_rs].valid == 1){
             if(k == 1){
-            RN[i].rs1 = RMT_TABLE[value_rs].rob_tag;
+                
+                RN[i].rs1 = RMT_TABLE[value_rs].rob_tag;
+
             }
             else {
+                
                 RN[i].rs2 = RMT_TABLE[value_rs].rob_tag;
             }
-            printf("rs1");
             return true;
         }
         return false;
@@ -271,11 +299,23 @@ class out_of_order{
     
     bool check_rob(){
         int tail_temp = tail;
+        int empty_count = 0;
         if(head == tail && ROB_TABLE[tail].pc == -1){
+            for(int i = 0; i < width ; i++){   
+                tail_temp+= 1;
+            if(ROB_TABLE[tail_temp].pc == -1){
+                empty_count++;
+            }
+            if(tail_temp == head)
+            {
+                return false;
+            }
+        }
+        if(empty_count == width)
             return true;
         }
         for(int i = 0; i < width ; i++)
-        {   tail_temp+= 1;
+        {   tail_temp = tail + i;
             if(tail_temp == rob_size){
                 tail_temp = 0;
             }
@@ -290,6 +330,9 @@ class out_of_order{
     void regread(){
         if(DI[0].empty == 0 && RR[0].empty == 1){
                     switch_array(RR,DI);
+        for (int i = 0; i < width; ++i) {
+             DI[i].values.DI_AC = advance_cycle + 1; 
+        }
                     DI[0].empty =1;
                     RR[0].empty =0;
                 }
@@ -297,30 +340,29 @@ class out_of_order{
 
     void dispatch(){
         if((iq_size-IQ_entries) >= width && DI[0].empty == 1){
+                for (int i = 0; i < width; ++i) {
+                    DI[i].values.IS_AC = advance_cycle + 1;
+                    DI[i].values.IS_NC = 1;
+                }
                     get_issue();
                     DI[0].empty =0;
-                    printf("IN THIS");
         }
     }
 
     void get_issue(){
-        printf("IN THIS, %d",IQ_seq);
         int k = 0;
         for(int i = 0;i < width;i++)
         {
             k = find_and_place_in_iq(i,k);
             IQ_seq++;
             IQ_entries++;
-            printf("in here");
 
         }
     }
 
     int find_and_place_in_iq(int i,int k){
-        printf("IN THIS, %d",IQ_seq);
             for(int j = 0;j < iq_size; j++){
                 if(IQ[j].valid == 0){
-                    printf("%d",j);
                     IQ[j].valid = true;
                     IQ[j].op_type = DI[i].op_type;
                     IQ[j].dst_tag = DI[i].dst;
@@ -332,6 +374,7 @@ class out_of_order{
                     IQ[j].rob_src1 = DI[i].rob_src1;
                     IQ[j].rob_src2 = DI[i].rob_src2;
                     IQ[j].sl_no    = DI[i].sl_no;
+                    IQ[j].values = DI[i].values;
                     if(k == iq_size){
                         return 0;
                     }
@@ -341,10 +384,14 @@ class out_of_order{
             
     }
     void issue(){
-        if(((width*5) - FU_COUNT) >= width && IQ_entries >= width){
+        if(((width*5) - FU_COUNT) >= width){
             push_values_to_ex();
-        }
+            for (int i = 0; i < iq_size; ++i) {
+                if(IQ[i].valid)
+                        IQ[i].values.IS_NC++;
+                    }}
     }
+
     void push_values_to_ex()
     {
         int min_iq_seq = findSmallest();
@@ -354,7 +401,9 @@ class out_of_order{
             for(int i = 0;i < iq_size; i++){
                 if(IQ[i].seq == j && IQ[i].valid == 1 && IQ[i].rs1_rdy == 1 && IQ[i].rs2_rdy == 1 && count < width)
                 {
-                    k = find_place_ex(i,k); 
+                    IQ[i].values.EX_AC = advance_cycle + 1;
+                    IQ[i].values.EX_NC = 1;
+                    k = find_place_ex(i,k);
                     FU_COUNT++;
                     IQ_entries--;
                     count++;
@@ -379,6 +428,8 @@ class out_of_order{
                     FU[j].rob_src1 = IQ[i].rob_src1;
                     FU[j].rob_src2 = IQ[i].rob_src2;
                     FU[j].sl_no    = IQ[i].sl_no;
+                    FU[j].values = IQ[i].values;
+
                     if(FU[j].op_type == 1){
                         FU[j].no_of_cycles = 2;
                     }
@@ -398,11 +449,20 @@ class out_of_order{
         for(int i = 0; i < width*5 ;i++){
             if(FU[i].no_of_cycles == 1){
                 wakeup(i);
+                for(int j = 0;j < 67;j++){
+                    if(FU[i].dst == RMT_TABLE[j].rob_tag){
+                        RMT_TABLE[j] = {-1,0};
+                    }
+
+                }
+                FU[i].values.WB_AC = advance_cycle + 1;
                 k = add_to_wb(i,k);
+                FU[i] = {-1,-1,-1,-1,0,0,0,-1,-1,{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}};
                 FU_COUNT--;
             }
-            else if(FU[i].no_of_cycles != 0 || FU[i].no_of_cycles != -1){
+            else if(FU[i].no_of_cycles > 1){
                 FU[i].no_of_cycles--;
+                FU[i].values.EX_NC++;
             }
         }
     }
@@ -451,7 +511,8 @@ class out_of_order{
                     WB[j].rs2 = FU[i].rs2;
                     WB[j].rob_src1 = FU[i].rob_src1;
                     WB[j].rob_src2 = FU[i].rob_src2;
-                    WB[j].sl_no    = sl_no;
+                    WB[j].sl_no    = FU[i].sl_no;
+                    WB[j].values = FU[i].values;
                 return j;
             }
         }
@@ -461,22 +522,21 @@ class out_of_order{
     void writeback(){
         for(int i = 0; i < width*5 ;i++){
             if(WB[i].empty == true){
-                    ROB_TABLE[WB[i].dst].rdy = 1;
-                    WB[i] = {-1, -1,-1,-1,0,0,0};  
+                WB[i].values.RT_AC = advance_cycle + 1;
+                WB[i].values.RT_NC = 1;
+                ROB_TABLE[WB[i].dst].rdy = 1;
+                ROB_TABLE[WB[i].dst].values = WB[i];
+                WB[i] = {-1, -1,-1,-1,0,0,0,-1,{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}};  
             }                
             }
         }
 
     void retire(){
-        int remove_flag =0;
-        int head_temp = head;
-        for(int i = head_temp; i < head_temp + width ; i++){
-            if(ROB_TABLE[i].rdy == 1){
-                remove_flag++;
-            }
-        }
-        if(remove_flag == width){
-                for(int i = head_temp; i < head_temp + width ; i++){
+        int total_empty = 0;
+                for(int i = 0; i < width ; i++){
+                    if(ROB_TABLE[head].rdy == 1){
+                    ROB_TABLE[head].values.values.RT_NC += advance_cycle - ROB_TABLE[head].values.values.RT_AC;
+                    printROBArray(ROB_TABLE[head]);
                     ROB_TABLE[head].dst = -1;
                     ROB_TABLE[head].pc  = -1;
                     ROB_TABLE[head].rdy = 0;
@@ -484,16 +544,26 @@ class out_of_order{
                     if(head == rob_size){
                         head = 0;
                     }
+                    }
+                    else{
+                        break;
+                    }
+                    
                 }
+            for(int i = 0; i < rob_size ; i++){
+            if(ROB_TABLE[i].dst == -1){
+                total_empty++;
             }
-    }
-
-    void print_update(cycle_counter* value){
-        for(int i = 0;i< width ;i++){
-
+            if(total_empty == rob_size){
+                end_of_stage = 1;
+            }
+            else{
+                end_of_stage = 0;
+            }
         }
-
     }
+
+
 
     int findSmallest() {
     int min = IQ[0].seq; 
@@ -504,6 +574,8 @@ class out_of_order{
     }
     return min;
     }
+
+
 
 
 
@@ -601,9 +673,34 @@ class out_of_order{
         for(int i = 0 ;i<width;i++){
             array2[i] = array1[i];
         }
-        // array1 = array2;
-        // array2 = temp;
     }
+
+    void printROBArray(ROB &rob) {
+    printf("%d fu{%d} src{%d,%d} dst{%d} ", 
+        rob.values.sl_no,                // Program counter
+        rob.values.op_type,    // Functional unit
+        rob.rs1,        // Source 1
+        rob.rs2,        // Source 2
+        rob.dst         // Destination
+    );
+       rob.values.values.FE_NC = rob.values.values.DE_AC - rob.values.values.FE_AC;
+        rob.values.values.DE_NC = rob.values.values.RN_AC - rob.values.values.DE_AC;
+        rob.values.values.RN_NC = rob.values.values.RR_AC - rob.values.values.RN_AC;
+        rob.values.values.RR_NC = rob.values.values.DI_AC - rob.values.values.RR_AC;
+        rob.values.values.DI_NC = rob.values.values.IS_AC - rob.values.values.DI_AC;
+        rob.values.values.WB_NC = rob.values.values.RT_AC - rob.values.values.WB_AC;
+
+    // Print pipeline stage counters
+    printf("FE{%d,%d} ", rob.values.values.FE_AC, rob.values.values.FE_NC);
+    printf("DE{%d,%d} ", rob.values.values.DE_AC, rob.values.values.DE_NC);
+    printf("RN{%d,%d} ", rob.values.values.RN_AC, rob.values.values.RN_NC);
+    printf("RR{%d,%d} ", rob.values.values.RR_AC, rob.values.values.RR_NC);
+    printf("DI{%d,%d} ", rob.values.values.DI_AC, rob.values.values.DI_NC);
+    printf("IS{%d,%d} ", rob.values.values.IS_AC, rob.values.values.IS_NC);
+    printf("EX{%d,%d} ", rob.values.values.EX_AC, rob.values.values.EX_NC);
+    printf("WB{%d,%d} ", rob.values.values.WB_AC, rob.values.values.WB_NC);
+    printf("RT{%d,%d}\n", rob.values.values.RT_AC, rob.values.values.RT_NC);
+}
 };
 
 int main (int argc, char* argv[])
@@ -611,15 +708,15 @@ int main (int argc, char* argv[])
     //FILE *FP;               // File handler
     char *trace_file;       // Variable that holds trace file name;
     proc_params params;       // look at sim_bp.h header file for the the definition of struct proc_params
-    int op_type, dest, src1, src2;  // Variables are read from trace file
-    uint64_t pc; // Variable holds the pc read from input file
+    //int op_type, dest, src1, src2;  // Variables are read from trace file
+    //uint64_t pc; // Variable holds the pc read from input file
 
-    // argv[0] = strdup("D:\\vscode\\programs\\project3_read_trace\\cpp_files\\sim_proc.cc");
-    // argv[1] = strdup("10");
-    // argv[2] = strdup("5");
-    // argv[3] = strdup("1");
-    // argv[4] = strdup("D:\\vscode\\programs\\project3_read_trace\\cpp_files\\val_trace_gcc1");
-    // argc = 5;
+    argv[0] = strdup("D:\\vscode\\programs\\project3_read_trace\\cpp_files\\sim_proc.cc");
+    argv[1] = strdup("16");
+    argv[2] = strdup("8");
+    argv[3] = strdup("2");
+    argv[4] = strdup("D:\\vscode\\programs\\project3_read_trace\\cpp_files\\val_trace_gcc1");
+    argc = 5;
     
     if (argc != 5)
     {
@@ -632,10 +729,10 @@ int main (int argc, char* argv[])
     params.iq_size      = strtoul(argv[2], NULL, 10);
     params.width        = strtoul(argv[3], NULL, 10);
     trace_file          = argv[4];
-    printf("rob_size:%lu "
-            "iq_size:%lu "
-            "width:%lu "
-            "tracefile:%s\n", params.rob_size, params.iq_size, params.width, trace_file);
+    // printf("rob_size:%lu "
+    //         "iq_size:%lu "
+    //         "width:%lu "
+    //         "tracefile:%s\n", params.rob_size, params.iq_size, params.width, trace_file);
     // Open trace_file in read mode
     FP = fopen(trace_file, "r");
     if(FP == NULL)
@@ -656,7 +753,6 @@ int main (int argc, char* argv[])
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     // while(fscanf(FP, "%llx %d %d %d %d", &pc, &op_type, &dest, &src1, &src2) != EOF)
     //     printf("%llx %d %d %d %d\n", pc, op_type, dest, src1, src2); //Print to check if inputs have been read correctly
-    printf("hiii\n");
 
     out_of_order ooo(params.width, params.rob_size, params.iq_size);
 
@@ -670,27 +766,29 @@ int main (int argc, char* argv[])
         ooo.rename();
         ooo.decode();
         ooo.fetch();
-        printf("DE");
-        ooo.print(ooo.DE);
-        printf("RN");
-        ooo.print(ooo.RN);
-        printf("RR");
-        ooo.print(ooo.RR);
-        printf("DI");
-        ooo.print(ooo.DI);
-        printf("IQ");
-        ooo.print_iq();
-        printf("ex");
-        ooo.print_ex();
-        printf("wb");
-        ooo.print_WB();
-        printf("hi");
-        ooo.print_ROB();
-        printf("rmt");
-        ooo.print_RMT();
         ooo.advance_cycle++;
-        printf("%d",ooo.advance_cycle);
+        printf("DE");
+        // ooo.print(ooo.DE);
+        // printf("RN");
+        // ooo.print(ooo.RN);
+        // printf("RR");
+        // ooo.print(ooo.RR);
+        // printf("DI");
+        // ooo.print(ooo.DI);
+        // printf("IQ");
+        // ooo.print_iq();
+        // printf("ex");
+        // ooo.print_ex();
+        // printf("wb");
+        // ooo.print_WB();
+        // printf("hi");
+        // ooo.print_ROB();
+        // printf("rmt");
+        // ooo.print_RMT();
+        // printf("%d  %d", ooo.head ,ooo.tail);
+        // printf("\n%d",ooo.advance_cycle);
         }
-    while(ooo.end == 0);
+    while(!(ooo.end_of_file && ooo.end_of_stage));
+    //while(ooo.advance_cycle < 200);
     return 0;
 }
