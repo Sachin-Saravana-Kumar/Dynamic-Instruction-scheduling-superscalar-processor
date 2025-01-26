@@ -1,7 +1,7 @@
 CC = g++
-OPT = -O3
-#OPT = -g
-#STANDARD = -std=c++11
+#OPT = -O3
+OPT = -g
+STANDARD = -std=c++11
 WARN = -Wall
 CFLAGS = $(OPT) $(STANDARD) $(WARN) $(INC) $(LIB)
 

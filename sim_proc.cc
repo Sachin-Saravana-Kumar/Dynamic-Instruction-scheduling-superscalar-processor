@@ -178,14 +178,14 @@ class out_of_order{
 
     ~out_of_order(){
 
-        delete[] DE;
-        delete[] RN;
-        delete[] RR;
-        delete[] DI;
-        delete[] IQ;
-        //delete[] ROB_TABLE;
-        delete[] FU;
-        delete[] WB;
+        // delete[] DE;
+        // delete[] RN;
+        // delete[] RR;
+        // delete[] DI;
+        // delete[] IQ;
+        // //delete[] ROB_TABLE;
+        // delete[] FU;
+        // delete[] WB;
     }
 
     void fetch(){
@@ -551,7 +551,7 @@ class out_of_order{
                     
                 }
             for(int i = 0; i < rob_size ; i++){
-            if(ROB_TABLE[i].dst == -1){
+            if(ROB_TABLE[i].pc == -1){
                 total_empty++;
             }
             if(total_empty == rob_size){
@@ -579,97 +579,9 @@ class out_of_order{
 
 
 
-    void print(pipelining* array){
-        printf("===== contents =====");
-        for (int i = 0; i < width; ++i) {
-           printf("\n");
-                printf("  %d",array[i].op_type);
-                printf("  %d",array[i].dst);
-                printf("  %d",array[i].rs1);
-                printf("  %d",array[i].rs2);
-                printf("  %d",array[i].empty);
-                printf("  %d",array[i].rob_src1);
-                printf("  %d",array[i].rob_src2);
-                printf("\n");
-        }
-    }
-
-
-    void print_iq(){
-        printf("===== contents =====");
-        for (int i = 0; i < iq_size; ++i) {
-           printf("\n");
-                printf("  %d",IQ[i].valid);
-                printf("  %d",IQ[i].dst_tag);
-                printf("  %d",IQ[i].rs1_rdy);
-                printf("  %d",IQ[i].rs1_tag);
-                printf("  %d",IQ[i].rs2_rdy);
-                printf("  %d",IQ[i].rs2_tag);
-                printf("  %d",IQ[i].seq);
-                printf("  %d",IQ[i].rob_src1);
-                printf("  %d",IQ[i].rob_src2);
-                printf("\n");
-        }
-    }
-
-        void print_ex(){
-        printf("===== contents =====");
-        for (int i = 0; i < width*5 ; ++i) {
-           printf("\n");
-
-                printf("  %d",FU[i].valid);
-                printf("  %d",FU[i].dst);
-                printf("  %d",FU[i].rs1);
-                printf("  %d",FU[i].rs2);
-                printf("  %d",FU[i].rob_src1);
-                printf("  %d",FU[i].rob_src2);
-                printf("  %d",FU[i].no_of_cycles);
-
-                printf("\n");
-                
-        }
-    }
-
-        void print_WB(){
-        printf("===== contents =====");
-        for (int i = 0; i < width*5 ; ++i) {
-           printf("\n");
-                printf("  %d", WB[i].empty);
-                printf("  %d", WB[i].dst);
-                printf("  %d", WB[i].rs1);
-                printf("  %d", WB[i].rs2);
-                printf("  %d", WB[i].rob_src1);
-                printf("  %d", WB[i].rob_src2);
-                printf("\n");
-                
-        }
-    }
-        void print_ROB(){
-        printf("===== contents =====");
-        for (int i = 0; i < rob_size ; ++i) {
-           printf("\n");
-                printf("  %d", ROB_TABLE[i].dst);
-                printf("  %d", ROB_TABLE[i].rdy);
-                printf("  %d", ROB_TABLE[i].pc);
-                printf("\n");
-                
-        }
-    }
-        void print_RMT(){
-        printf("===== contents =====");
-        for (int i = 0; i < 67 ; ++i) {
-           printf("\n");
-                printf("  %d", RMT_TABLE[i].valid);
-                printf("  %d", RMT_TABLE[i].rob_tag);
-                printf("\n");
-                
-        }
-    }
 
 
     void switch_array(pipelining*& array1, pipelining*& array2){
-        pipelining* temp = array1;
-        //array2 = temp;
         for(int i = 0 ;i<width;i++){
             array2[i] = array1[i];
         }
@@ -710,12 +622,11 @@ int main (int argc, char* argv[])
     proc_params params;       // look at sim_bp.h header file for the the definition of struct proc_params
     //int op_type, dest, src1, src2;  // Variables are read from trace file
     //uint64_t pc; // Variable holds the pc read from input file
-
-    argv[0] = strdup("D:\\vscode\\programs\\project3_read_trace\\cpp_files\\sim_proc.cc");
-    argv[1] = strdup("16");
-    argv[2] = strdup("8");
-    argv[3] = strdup("2");
-    argv[4] = strdup("D:\\vscode\\programs\\project3_read_trace\\cpp_files\\val_trace_gcc1");
+    // argv[0] = strdup("D:\\vscode\\programs\\project3_read_trace\\cpp_files\\sim_proc.cc");
+    // argv[1] = strdup("16");
+    // argv[2] = strdup("8");
+    // argv[3] = strdup("2");
+    // argv[4] = strdup("D:\\vscode\\programs\\project3_read_trace\\cpp_files\\val_trace_perl1");
     argc = 5;
     
     if (argc != 5)
@@ -729,11 +640,6 @@ int main (int argc, char* argv[])
     params.iq_size      = strtoul(argv[2], NULL, 10);
     params.width        = strtoul(argv[3], NULL, 10);
     trace_file          = argv[4];
-    // printf("rob_size:%lu "
-    //         "iq_size:%lu "
-    //         "width:%lu "
-    //         "tracefile:%s\n", params.rob_size, params.iq_size, params.width, trace_file);
-    // Open trace_file in read mode
     FP = fopen(trace_file, "r");
     if(FP == NULL)
     {
@@ -767,28 +673,21 @@ int main (int argc, char* argv[])
         ooo.decode();
         ooo.fetch();
         ooo.advance_cycle++;
-        printf("DE");
-        // ooo.print(ooo.DE);
-        // printf("RN");
-        // ooo.print(ooo.RN);
-        // printf("RR");
-        // ooo.print(ooo.RR);
-        // printf("DI");
-        // ooo.print(ooo.DI);
-        // printf("IQ");
-        // ooo.print_iq();
-        // printf("ex");
-        // ooo.print_ex();
-        // printf("wb");
-        // ooo.print_WB();
-        // printf("hi");
-        // ooo.print_ROB();
-        // printf("rmt");
-        // ooo.print_RMT();
-        // printf("%d  %d", ooo.head ,ooo.tail);
-        // printf("\n%d",ooo.advance_cycle);
+        if((ooo.end_of_file && ooo.end_of_stage)){
+            printf("# === Simulator Command =========\n");
+            printf("# ./sim %d %d %d %s\n", params.rob_size, params.iq_size, params.width, trace_file); // Replace with appropriate variables
+            printf("# === Processor Configuration ===\n");
+            printf("# ROB_SIZE = %d\n", params.rob_size);
+            printf("# IQ_SIZE  = %d\n", params.iq_size);
+            printf("# WIDTH    = %d\n", params.width);
+            printf("# === Simulation Results ========\n");
+            printf("# Dynamic Instruction Count    = %d\n", ooo.sl_no);
+            printf("# Cycles                       = %d\n", ooo.advance_cycle);
+            float ipc = (float)ooo.sl_no / (float)(ooo.advance_cycle);
+            printf("# Instructions Per Cycle (IPC) = %.2f\n", ipc);
+        }
         }
     while(!(ooo.end_of_file && ooo.end_of_stage));
-    //while(ooo.advance_cycle < 200);
+
     return 0;
 }
